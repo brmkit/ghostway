@@ -1,0 +1,21 @@
+##
+# just a basic/stupid nginx configuration
+##
+
+server {
+    listen 80;
+    
+    location / {
+    # basic check to enter the loop
+        if ($http_user_agent = "TestRedirection") {
+            rewrite ^(.+)$ /onlinebanking$1 last;
+    }
+
+    location /onlinebanking {
+        proxy_set_header User-Agent "TestRedirection";
+        proxy_pass http://{{ redirect_to }}:80;
+    }
+
+        return 302 http://google.com;
+    }
+}

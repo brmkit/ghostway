@@ -1,0 +1,43 @@
+---
+- name: SETUP ZEROTIER NETWORK
+  gather_facts: true
+  hosts: all
+  tasks:
+    - name: Installing ZeroTier-Cli
+      shell: curl -s https://install.zerotier.com | sudo bash
+
+    - name: Detect ZeroTier Member ID
+      shell: zerotier-cli info | awk '{print $3}'
+      register: zerotier_member_id
+
+    - name: Authorize ZeroTier member
+      local_action:
+        module: shell
+        args:
+          cmd: |
+            curl -X POST "https://api.zerotier.com/api/v1/network/{{ zerotier_network_id }}/member/{{ zerotier_member_id.stdout }}" -H "Content-Type: application/json" -H "Authorization: token {{ lookup('env','ZEROTOKEN') }}" --data '{"config": {"authorized": true} }'
+        executable: /bin/bash
+      register: zerotier_cli_authorization
+
+    - name: Joining ZeroTier network
+      shell: zerotier-cli join {{ zerotier_network_id }}
+
+    - name: Wait to get an ip from ZeroTier
+      ansible.builtin.pause:
+        seconds: 120
+
+    - name: Detect ZeroTier IP address
+      shell: zerotier-cli listnetworks | tail -1 | awk '{print $9}' | cut -d'/' -f1
+      register: zerotier_ip
+      until: zerotier_ip.stdout != ""
+      retries: 20
+      delay: 15
+      
+    # yes, it takes sooo long sometimes
+
+    - name: Write ip as variable
+      local_action:
+        module: lineinfile
+        line: '{{ ansible_hostname }} = {{ zerotier_ip.stdout }}'
+        path: ../inventory/hosts.ini
+        insertafter: EOF

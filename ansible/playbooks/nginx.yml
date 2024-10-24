@@ -1,0 +1,31 @@
+--- 
+- name: SETUP NGINX
+  gather_facts: true
+  hosts: all
+  tasks:       
+    - name: Install nginx
+      apt:
+        name: nginx
+        state: latest
+        update_cache: true
+
+    - name: Start nginx
+      service: 
+        name: nginx
+        state: started
+        enabled: yes
+
+    - name: Define redirect_to variable based on redirector name
+      set_fact:
+        redirect_to: "{{ backline if ansible_hostname == 'midline' else (midline if ansible_hostname == 'frontline') }}"
+      when: ansible_hostname != 'backline'
+
+    - name: Copy config to default destination
+      template:
+        src: files/nginx.conf.j2
+        dest: /etc/nginx/sites-enabled/default
+
+    - name: Restart nginx
+      service:
+        name: nginx
+        state: restarted
