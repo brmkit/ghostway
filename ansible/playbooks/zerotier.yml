@@ -10,13 +10,16 @@
       shell: zerotier-cli info | awk '{print $3}'
       register: zerotier_member_id
 
-    - name: Authorize ZeroTier member
+    - name: Authorize ZeroTier member using local_action
       local_action:
-        module: shell
-        args:
-          cmd: |
-            curl -X POST "https://api.zerotier.com/api/v1/network/{{ zerotier_network_id }}/member/{{ zerotier_member_id.stdout }}" -H "Content-Type: application/json" -H "Authorization: token {{ lookup('env','ZEROTOKEN') }}" --data '{"config": {"authorized": true} }'
-        executable: /bin/bash
+        module: uri
+        url: "https://api.zerotier.com/api/v1/network/{{ zerotier_network_id }}/member/{{ zerotier_member_id.stdout }}"
+        method: POST
+        headers:
+          Authorization: "token {{ lookup('env','ZEROTOKEN') }}"
+          Content-Type: "application/json"
+        body: '{"config": {"authorized": true}}'
+        body_format: json
       register: zerotier_cli_authorization
 
     - name: Joining ZeroTier network
